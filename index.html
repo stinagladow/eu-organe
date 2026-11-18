@@ -302,6 +302,26 @@
   .resetrow button{font-family:var(--sans);font-size:13px;border:1px solid var(--line);background:#fff;border-radius:6px;padding:5px 10px;cursor:pointer;color:var(--ink-soft);}
   footer{max-width:var(--maxw);margin:0 auto;padding:0 16px 40px;font-family:var(--sans);font-size:12.5px;color:var(--muted);line-height:1.5;}
 
+  /* Einzelseiten-Modus: jede Station eine eigene Seite */
+  body.paged header.hero{display:none;}
+  body.paged.on-start header.hero{display:block;}
+  body.paged section.step{display:none;border-top:none;padding-top:84px;}
+  body.paged section.step.active{display:block;}
+  a.btn{display:inline-block;text-decoration:none;}
+  .start-cta{margin-top:26px;}
+  .start-cta .btn{font-size:16px;padding:13px 24px;}
+  #topnav .steps a.home{width:auto;border-radius:14px;padding:0 9px;}
+  .pagenav{display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;margin:44px 0 0;padding-top:20px;border-top:1px solid var(--line);font-family:var(--sans);}
+  .pagenav a{display:flex;flex-direction:column;gap:2px;text-decoration:none;border:1.5px solid var(--line);background:var(--card);border-radius:10px;padding:10px 16px;color:var(--ink);max-width:48%;min-width:140px;transition:.15s;}
+  .pagenav a:hover{border-color:var(--c,var(--eu));}
+  .pagenav a small{font-size:11px;font-weight:800;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);}
+  .pagenav a span{font-size:15px;font-weight:600;line-height:1.3;}
+  .pagenav a.next{margin-left:auto;text-align:right;background:var(--c,var(--eu));border-color:var(--c,var(--eu));color:#fff;}
+  .pagenav a.next small{color:rgba(255,255,255,.8);}
+  .pagenav a.next:hover{filter:brightness(.9);}
+  @media(max-width:560px){.pagenav a{max-width:100%;flex:1;}}
+  @media print{.pagenav{display:none!important;}}
+
   @media print{
     #topnav,#progressbar,#scrolltop,#opDrawer,#opPop,.resetrow,footer,header.hero{display:none!important;}
     body{background:#fff;font-size:12pt;}
@@ -356,6 +376,7 @@
 <div class="mat-card"><b>💡 Infotexte dieser Lernstation</b>ergänzen das Buch mit aktuellen Fakten und Zusatzwissen. Aufgaben dazu sind mit „Infotext“ gekennzeichnet.</div>
 </div>
 </div>
+<div class="start-cta"><a class="btn" href="#s0">Los geht’s: Abschnitt 0 →</a></div>
 </header>
 <main>
 <!-- ============ 0 EINSTIEG ============ -->
@@ -1535,11 +1556,32 @@ const navLinks=[...navWrap.querySelectorAll('a')];
 function refreshNav(){steps.forEach((s,i)=>{const tasks=[...s.querySelectorAll('.aufgabe:not([data-optional])')];const done=tasks.length&&tasks.every(t=>t.dataset.solved==='1');
   const quizDone=s.id==='s9'&&ST.quiz&&ST.quiz.done;navLinks[i].classList.toggle('solved',!!(done||quizDone));});}
 function onScroll(){const h=document.documentElement;
-  document.getElementById('progressbar').style.width=(h.scrollTop/Math.max(1,h.scrollHeight-h.clientHeight)*100)+'%';
-  document.getElementById('scrolltop').style.display=h.scrollTop>600?'block':'none';
-  let cur=-1;steps.forEach((s,i)=>{if(s.getBoundingClientRect().top<150)cur=i;});
-  navLinks.forEach((a,i)=>a.classList.toggle('current',i===cur));}
+  document.getElementById('scrolltop').style.display=h.scrollTop>600?'block':'none';}
 window.addEventListener('scroll',onScroll,{passive:true});
+
+/* ===== Einzelseiten: jede Station eine eigene Seite ===== */
+const homeLink=document.createElement('a');homeLink.href='#start';homeLink.textContent='Start';homeLink.title='Startseite';homeLink.className='home';
+navWrap.insertBefore(homeLink,navWrap.firstChild);
+steps.forEach((s,i)=>{const nav=document.createElement('nav');nav.className='pagenav';
+  const prev=i===0?{href:'#start',num:'',title:'Startseite'}:{href:'#'+steps[i-1].id,num:'Abschnitt '+(i-1),title:steps[i-1].dataset.title};
+  let h=`<a class="prev" href="${prev.href}"><small>← ${prev.num||'Zurück'}</small><span>${prev.title}</span></a>`;
+  if(i<steps.length-1)h+=`<a class="next" href="#${steps[i+1].id}"><small>Weiter: Abschnitt ${i+1} →</small><span>${steps[i+1].dataset.title}</span></a>`;
+  nav.innerHTML=h;s.appendChild(nav);});
+document.body.classList.add('paged');
+function route(){const h=decodeURIComponent(location.hash.slice(1));
+  const el=h&&h!=='start'?document.getElementById(h):null;
+  const sec=el?(el.matches('section.step')?el:el.closest('section.step')):null;
+  const idx=sec?steps.indexOf(sec):-1;
+  document.body.classList.toggle('on-start',idx<0);
+  steps.forEach((s,i)=>s.classList.toggle('active',i===idx));
+  navLinks.forEach((a,i)=>a.classList.toggle('current',i===idx));
+  homeLink.classList.toggle('current',idx<0);
+  document.getElementById('progressbar').style.width=((idx+1)/steps.length*100)+'%';
+  document.title=(idx<0?'':idx+' · '+sec.dataset.title+' – ')+'Wer entscheidet in der EU?';
+  if(el&&el!==sec)el.scrollIntoView();else window.scrollTo({top:0,behavior:'instant'});
+  onScroll();}
+window.addEventListener('hashchange',route);
+setTimeout(route,0);
 
 /* ===== Operatoren ===== */
 const OPS=[
